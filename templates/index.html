@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contador de Parafusos</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="eyebrow">Microsserviço FastAPI</p>
+      <h1>Contagem de parafusos com máscara e inspeção visual</h1>
+      <p class="subtitle">
+        Envie uma foto, processe o pipeline do notebook e receba uma imagem anotada com a máscara,
+        contagem e rejeições do filtro de forma.
+      </p>
+    </section>
+
+    <section class="card">
+      <form id="upload-form" class="upload-form">
+        <label class="dropzone" for="file-input">
+          <input id="file-input" name="file" type="file" accept="image/*" required>
+          <span class="dropzone-title">Escolha uma imagem</span>
+          <span class="dropzone-hint">JPG, PNG, BMP ou TIFF</span>
+        </label>
+
+        <button type="submit" class="primary-button">Processar imagem</button>
+      </form>
+
+      <div id="status" class="status">Aguardando upload.</div>
+    </section>
+
+    <section id="result-section" class="card result-card hidden">
+      <div class="result-header">
+        <h2>Resultado</h2>
+        <p id="metrics">0 parafusos detectados</p>
+      </div>
+      <img id="result-image" alt="Resultado do processamento" class="result-image">
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('upload-form');
+    const statusBox = document.getElementById('status');
+    const resultSection = document.getElementById('result-section');
+    const resultImage = document.getElementById('result-image');
+    const metrics = document.getElementById('metrics');
+    let currentUrl = null;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const fileInput = document.getElementById('file-input');
+      if (!fileInput.files.length) {
+        statusBox.textContent = 'Selecione uma imagem antes de processar.';
+        return;
+      }
+
+      statusBox.textContent = 'Processando imagem...';
+      resultSection.classList.add('hidden');
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const response = await fetch('/api/process', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.detail || 'Falha ao processar a imagem.');
+        }
+
+        const blob = await response.blob();
+        if (currentUrl) {
+          URL.revokeObjectURL(currentUrl);
+        }
+        currentUrl = URL.createObjectURL(blob);
+        resultImage.src = currentUrl;
+
+        const count = response.headers.get('X-Screw-Count') || '0';
+        const rejected = response.headers.get('X-Rejected-Count') || '0';
+        metrics.textContent = `${count} parafusos detectados | ${rejected} rejeitados`;
+        statusBox.textContent = 'Imagem processada com sucesso.';
+        resultSection.classList.remove('hidden');
+      } catch (error) {
+        statusBox.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>
