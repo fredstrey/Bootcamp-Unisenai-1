@@ -13,9 +13,3 @@ build/
 *.egg-info/
 .DS_Store
 Thumbs.db
-*.png
-*.jpg
-*.jpeg
-*.bmp
-*.tiff
-*.webp
